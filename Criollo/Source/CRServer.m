@@ -107,7 +107,7 @@ NS_ASSUME_NONNULL_END
         _workerQueue = [self createDefaultWorkerQueue];
         _workerQueueIsDefaultQueue = YES;
     }
-    
+
     self.isolationQueue = [self createIsolationQueue];
     self.socketDelegateQueue = [self createSocketDelegateQueue];
     self.acceptedSocketDelegateTargetQueue = [self createSocketDelegateQueue];
@@ -120,20 +120,20 @@ NS_ASSUME_NONNULL_END
             [self.delegate serverWillStartListening:self];
         });
     }
-    
+
     [self willChangeValueForKey:IsListeningKey];
     if(!(_isListening = [self.socket acceptOnInterface:self.configuration.CRServerInterface port:self.configuration.CRServerPort error:error])) {
         [self stopListening];
         return NO;
     }
     [self didChangeValueForKey:IsListeningKey];
-    
+
     if (self.isListening && [self.delegate respondsToSelector:@selector(serverDidStartListening:)]) {
         dispatch_async(self.delegateQueue, ^{
             [self.delegate serverDidStartListening:self];
         });
     }
-    
+
     return YES;
 }
 
@@ -145,15 +145,15 @@ NS_ASSUME_NONNULL_END
     }
 
     [self willChangeValueForKey:IsListeningKey];
-    
+
     [self.workerQueue cancelAllOperations];
-    
+
     self.socket.delegate = nil;
     [self.socket disconnect];
     self.socket = nil;
 
     _isListening = NO;
-    
+
     if(self.workerQueueIsDefaultQueue) {
         self.workerQueue = nil;
         _workerQueueIsDefaultQueue = NO;
@@ -161,9 +161,9 @@ NS_ASSUME_NONNULL_END
     self.isolationQueue = nil;
     self.socketDelegateQueue = nil;
     self.acceptedSocketDelegateTargetQueue = nil;
-    
+
     [self didChangeValueForKey:IsListeningKey];
-    
+
     if ([self.delegate respondsToSelector:@selector(serverDidStopListening:)]) {
         dispatch_async(self.delegateQueue, ^{
             [self.delegate serverDidStopListening:self];
@@ -209,7 +209,7 @@ NS_ASSUME_NONNULL_END
             [server.delegate server:server didAcceptConnection:connection];
         });
     }
-    
+
     [connection startReading];
 }
 
@@ -244,6 +244,11 @@ NS_ASSUME_NONNULL_END
             [server.delegate server:server didCloseConnection:connection];
         });
     }
+
+    if (!self.isolationQueue) {
+      return;
+    }
+
     dispatch_async(self.isolationQueue, ^(){
         [server.connections removeObject:connection];
     });
@@ -255,11 +260,11 @@ NS_ASSUME_NONNULL_END
     if (name.length == 0) {
         return nil;
     }
-    
+
     if (bundleIndentifier.length == 0) {
         return name;
     }
-    
+
     return [bundleIndentifier stringByAppendingPathExtension:name];
 }
 
@@ -268,13 +273,13 @@ NS_ASSUME_NONNULL_END
         *dispatchLabel = NULL;
         return;
     }
-    
+
     NSStringEncoding encoding = NSASCIIStringEncoding;
     if ([label canBeConvertedToEncoding:encoding]) {
         *dispatchLabel = [label cStringUsingEncoding:encoding];
         return;
     }
-       
+
     NSData *labelData = [label dataUsingEncoding:encoding allowLossyConversion:YES];
     unsigned long size = labelData.length;
     char buf[size + 1]; // NULL terminated string
@@ -289,11 +294,11 @@ NS_ASSUME_NONNULL_END
 
     dispatch_queue_attr_t attr = concurrent ? DISPATCH_QUEUE_CONCURRENT : DISPATCH_QUEUE_SERIAL;
     dispatch_queue_t queue = dispatch_queue_create(label, attr);
-    
+
     if (qos != QOS_CLASS_UNSPECIFIED) {
         dispatch_set_target_queue(queue, dispatch_get_global_queue(qos, 0));
     }
-    
+
     return queue;
 }
 
@@ -327,7 +332,7 @@ NS_ASSUME_NONNULL_END
     if (self.isListening) {
         @throw [NSException exceptionWithName:NSInternalInconsistencyException reason:@"Cannot set the worker queue after the server has started listening." userInfo:nil];
     }
-    
+
     [self willChangeValueForKey:WorkerQueueKey];
     _workerQueue = workerQueue;
     [self didChangeValueForKey:WorkerQueueKey];
